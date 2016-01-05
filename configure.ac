@@ -94,6 +94,14 @@ AC_SUBST(wextra_flag)
 
 # Checks for features and flags.
 # ----------------------------------------------------------------------
+
+AC_ARG_WITH(graph-height, [AC_HELP_STRING([--with-graph-height=lines], [Height of graphical meters in lines.])],
+if test -n "$withval"; then
+   AC_DEFINE_UNQUOTED(GRAPH_HEIGHT, $withval, [Height of graphical meters in lines])
+   GRAPH_HEIGHT="$withval"
+fi,
+AC_DEFINE(GRAPH_HEIGHT, 4, [Height of graphical meters in lines]))
+
 PROCDIR=/proc
 
 AC_ARG_ENABLE(proc, [AC_HELP_STRING([--enable-proc], [use Linux-compatible proc filesystem])], enable_proc="yes", enable_proc="no")
