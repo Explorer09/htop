@@ -18,7 +18,9 @@ in the source distribution for its full text.
 #include "UsersTable.h"
 #include "Platform.h"
 
+#include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -136,10 +138,30 @@ static CommandLineSettings parseArguments(int argc, char** argv) {
                flags.pidWhiteList = Hashtable_new(8, false);
             }
 
-            while(pid) {
-                unsigned int num_pid = atoi(pid);
-                Hashtable_put(flags.pidWhiteList, num_pid, (void *) 1);
-                pid = strtok_r(NULL, ",", &saveptr);
+            while (pid) {
+               unsigned long num_pid;
+               char* endptr;
+               if (pid[0] == '-') {
+                  // strtol and strtoul both accept negative numbers.
+                  errno = EINVAL;
+               } else {
+                  errno = 0;
+                  num_pid = strtoul(pid, &endptr, 10);
+                  if ((*endptr) != '\0')
+                     errno = EINVAL;
+               }
+               if (num_pid > UINT_MAX) {
+                  // safe downcast from ulong to uint
+                  errno = ERANGE;
+               }
+               if (errno) {
+                  fprintf(stderr, "%s: invalid pid value '%s': %s\n",
+                          argv[0], pid, strerror(errno));
+                  exit(1);
+               }
+               Hashtable_put(flags.pidWhiteList, (unsigned int) num_pid,
+                             (void *) 1);
+               pid = strtok_r(NULL, ",", &saveptr);
             }
             free(argCopy);
 
