@@ -409,7 +409,7 @@ static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
    for (; index < nValues - 1; index+=2, col++) {
       int pix = GraphMeterMode_pixPerRow * GRAPH_HEIGHT;
       int v1 = CLAMP((int) lround(data->values[index] * pix), 1, pix);
-      int v2 = CLAMP((int) lround(data->values[index+1] * pix), 1, pix);
+      int v2 = CLAMP((int) lround(data->values[index + 1] * pix), 1, pix);
 
       int colorIdx = GRAPH_1;
       for (int line = 0; line < GRAPH_HEIGHT; line++) {
