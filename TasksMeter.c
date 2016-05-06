@@ -24,13 +24,7 @@ static void TasksMeter_updateValues(Meter* this, char* buffer, int len) {
    this->values[1] = pl->userlandThreads;
    this->values[2] = pl->totalTasks - pl->kernelThreads - pl->userlandThreads;
    this->values[3] = pl->runningTasks;
-   if (pl->totalTasks > this->full) {
-      this->full = pl->totalTasks;
-   }
-   if (this->pl->settings->hideKernelThreads) {
-      this->values[0] = 0;
-   }
-   snprintf(buffer, len, "%d/%d", (int) this->values[3], (int) this->full);
+   snprintf(buffer, len, "%d/%d", pl->runningTasks, pl->totalTasks);
 }
 
 static void TasksMeter_display(Object* cast, RichString* out) {
@@ -75,7 +69,7 @@ MeterClass TasksMeter_class = {
    .updateValues = TasksMeter_updateValues,
    .defaultMode = TEXT_METERMODE,
    .maxItems = 4,
-   .full = 100.0,
+   .full = -1.0,
    .attributes = TasksMeter_attributes, 
    .name = "Tasks",
    .uiName = "Task counter",
