@@ -35,7 +35,12 @@ typedef struct MeterClass_ {
    const Meter_Draw draw;
    const Meter_UpdateValues updateValues;
    const int defaultMode;
-   const double total;
+   // For "full" variable, sign matters.
+   // >0: Full/maximum value is stable (at least for a short duration). Will
+   //     draw as percent graph. e.g. CPU & swap.
+   // <0: No stable maximum. Will draw with dynamic scale. e.g. loadavg.
+   // (full == 0) will bring weird behavior for now. Avoid.
+   const double full;
    const int* attributes;
    const char* name;
    const char* uiName;
@@ -58,6 +63,7 @@ typedef struct MeterClass_ {
 #define Meter_defaultMode(this_)       As_Meter(this_)->defaultMode
 #define Meter_getItems(this_)          As_Meter(this_)->curItems
 #define Meter_setItems(this_, n_)      As_Meter(this_)->curItems = (n_)
+#define Meter_getMaxItems(this_)       As_Meter(this_)->maxItems
 #define Meter_attributes(this_)        As_Meter(this_)->attributes
 #define Meter_name(this_)              As_Meter(this_)->name
 #define Meter_uiName(this_)            As_Meter(this_)->uiName
@@ -73,7 +79,7 @@ struct Meter_ {
    int h;
    struct ProcessList_* pl;
    double* values;
-   double total;
+   double full;
 };
 
 typedef struct MeterMode_ {
@@ -93,7 +99,12 @@ typedef enum {
 
 typedef struct GraphData_ {
    struct timeval time;
-   double values[METER_BUFFER_LEN];
+   int drawOffset;
+   double* values;
+   double* stack1;
+   double* stack2;
+   int* colors;
+   size_t colorRowSize;
 } GraphData;
 
 
@@ -120,6 +131,8 @@ void Meter_setCaption(Meter* this, const char* caption);
 void Meter_setMode(Meter* this, int modeIndex);
 
 ListItem* Meter_toListItem(Meter* this, bool moving);
+
+/* ---------- GraphData ---------- */
 
 /* ---------- TextMeterMode ---------- */
 
