@@ -114,12 +114,12 @@ typedef enum {
 
 typedef struct GraphData_ {
    struct timeval time;
-   int drawOffset;
    double* values;
    double* stack1;
    double* stack2;
    int* colors;
-   size_t colorRowSize;
+   unsigned int colorRowSize;
+   int drawOffset;
 } GraphData;
 
 }*/
@@ -261,7 +261,7 @@ static inline GraphData* GraphData_new(size_t nValues, size_t nItems, bool isPer
    // colors[] is designed to be two-dimensional, but without a column of row
    // pointers (unlike var[m][n] declaration).
    // GraphMeterMode_draw() will print this table in transposed form.
-   size_t colorRowSize;
+   unsigned int colorRowSize;
    if (nItems <= 1) { // 1 or less item
       colorRowSize = 1;
    } else if (isPercentGraph) { // Percent graph: a linear row of color cells.

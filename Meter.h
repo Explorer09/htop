@@ -99,12 +99,12 @@ typedef enum {
 
 typedef struct GraphData_ {
    struct timeval time;
-   int drawOffset;
    double* values;
    double* stack1;
    double* stack2;
    int* colors;
-   size_t colorRowSize;
+   unsigned int colorRowSize;
+   int drawOffset;
 } GraphData;
 
 
