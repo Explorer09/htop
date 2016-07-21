@@ -20,6 +20,7 @@ in the source distribution for its full text.
 #include <stdlib.h>
 #include <stdarg.h>
 #include <float.h>
+#include <limits.h>
 #include <assert.h>
 #include <sys/time.h>
 
@@ -133,6 +134,16 @@ typedef struct GraphData_ {
 #ifndef CLAMP
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
 #endif
+
+#define IS_POWER_OF_TWO(x) ((x) > 0 && !((x) & ((x) - 1)))
+
+#ifndef __has_builtin // Clang's macro
+# define __has_builtin(x) 0
+#endif
+#if (__has_builtin(__builtin_clz) || \
+    ((__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
+# define HAS_BUILTIN_CLZ 1
+#endif // __has_builtin(__builtin_clz) || GNU C 3.4 or later
 
 MeterClass Meter_class = {
    .super = {
@@ -314,16 +325,32 @@ static inline int GraphData_getColor(GraphData* this, int vIndex, int h, int sca
       (void) frexp(MAX(this->values[vIndex], this->values[vIndex + 1]), &exp);
       int level = MIN((scaleExp - exp), maxLevel);
       assert(level >= 0);
-      if ((h << (level + 1)) + 1 >= this->colorRowSize) {
+      if (((unsigned int) h << (level + 1)) + 1 >= this->colorRowSize) {
          return BAR_SHADOW;
       }
-      for (int j = 1 << level; ; j >>= 1) {
+      unsigned int j, offset;
+#if IS_POWER_OF_TWO(GRAPH_HEIGHT)
+      j = 1 << level;
+      offset = (h << (level + 1)) + j;
+      assert(offset < this->colorRowSize);
+      return this->colors[vIndex * this->colorRowSize + offset];
+#elif 0
+// #if HAS_BUILTIN_CLZ
+      // Value is incorrect. Buggy. Disable for now.
+      j = 1 << ((sizeof(int) * CHAR_BIT) - 1 -
+          __builtin_clz(this->colorRowSize - 1 - (h << (level + 1))));
+      assert(j > 0);
+      offset = (h << (level + 1)) + j;
+      return this->colors[vIndex * this->colorRowSize + offset];
+#else
+      for (j = 1 << level; ; j >>= 1) {
          assert(j > 0);
-         size_t offset = (h << (level + 1)) + j;
+         offset = (h << (level + 1)) + j;
          if (offset < this->colorRowSize) {
             return this->colors[vIndex * this->colorRowSize + offset];
          }
       }
+#endif
    } else if (this->colorRowSize == GRAPH_HEIGHT) {
       return this->colors[vIndex * this->colorRowSize + h];
    } else {
