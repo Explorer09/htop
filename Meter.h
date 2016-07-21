@@ -118,6 +118,16 @@ typedef struct GraphData_ {
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
 #endif
 
+#define IS_POWER_OF_TWO(x) ((x) > 0 && !((x) & ((x) - 1)))
+
+#ifndef __has_builtin // Clang's macro
+# define __has_builtin(x) 0
+#endif
+#if (__has_builtin(__builtin_clz) || \
+    ((__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
+# define HAS_BUILTIN_CLZ 1
+#endif // __has_builtin(__builtin_clz) || GNU C 3.4 or later
+
 extern MeterClass Meter_class;
 
 Meter* Meter_new(struct ProcessList_* pl, int param, MeterClass* type);
