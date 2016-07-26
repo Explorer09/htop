@@ -333,28 +333,77 @@ static void BarMeterMode_draw(Meter* this, int x, int y, int w) {
 
 /* ---------- GraphMeterMode ---------- */
 
-#ifdef HAVE_LIBNCURSESW
+typedef struct GraphStyle_ {
+   // Num of quantization levels ("pix") per row per character.
+   char pixPerRow;
+   // Num of bytes per multibyte character. Every character must be padded to
+   // this num of bytes.
+   char length;
+   // Must be "\0\0"
+   char reserved[2];
+   // Length of str[] should be ((pixPerRow+1)^2 * length) bytes.
+   char str[];
+} GraphStyle;
 
-#define PIXPERROW_UTF8 4
-static const char* GraphMeterMode_dotsUtf8[] = {
-   /*00*/" ", /*01*/"⢀", /*02*/"⢠", /*03*/"⢰", /*04*/ "⢸",
-   /*10*/"⡀", /*11*/"⣀", /*12*/"⣠", /*13*/"⣰", /*14*/ "⣸",
-   /*20*/"⡄", /*21*/"⣄", /*22*/"⣤", /*23*/"⣴", /*24*/ "⣼",
-   /*30*/"⡆", /*31*/"⣆", /*32*/"⣦", /*33*/"⣶", /*34*/ "⣾",
-   /*40*/"⡇", /*41*/"⣇", /*42*/"⣧", /*43*/"⣷", /*44*/ "⣿"
+/*{
+typedef enum {
+   GRAPHSTYLE_ASCII = 0, // Fallback default
+   GRAPHSTYLE_UTF8 = 1,  // UTF-8 default (braille)
+   LAST_GRAPHSTYLE       // Dummy & unused.
+} GraphStyleId;
+}*/
+
+static const GraphStyle GraphMeterMode_styles[] = {
+   [GRAPHSTYLE_ASCII] = {
+      .pixPerRow = 2,
+      .length = 1,
+      .reserved = "\0\0",
+      .str =
+          /*00*/" " /*01*/"." /*02*/":"
+          /*10*/"." /*11*/"." /*12*/":"
+          /*20*/":" /*21*/":" /*22*/":",
+   },
+
+#if HAVE_LIBNCURSESW
+   [GRAPHSTYLE_UTF8] = {
+      /* XXX: Can we make this 3 bytes per character? Not sure about how data
+       * alignment affects performance. */
+      .pixPerRow = 4,
+      .length = 4,
+      .reserved = "\0\0",
+      .str =
+      /*00 [ ]       01 [⢀]        02 [⢠]        03 [⢰]        04 [⢸]*/
+      " \0\0\0"     "\xe2\xa2\x80\0\xe2\xa2\xa0\0\xe2\xa2\xb0\0\xe2\xa2\xb8\0"
+      /*10 [⡀]       11 [⣀]        12 [⣠]        13 [⣰]        14 [⣸]*/
+      "\xe2\xa1\x80\0\xe2\xa3\x80\0\xe2\xa3\xa0\0\xe2\xa3\xb0\0\xe2\xa3\xb8\0"
+      /*20 [⡄]       21 [⣄]        22 [⣤]        23 [⣴]        24 [⣼]*/
+      "\xe2\xa1\x84\0\xe2\xa3\x84\0\xe2\xa3\xa4\0\xe2\xa3\xb4\0\xe2\xa3\xbc\0"
+      /*30 [⡆]       31 [⣆]        32 [⣦]        33 [⣶]        34 [⣾]*/
+      "\xe2\xa1\x86\0\xe2\xa3\x86\0\xe2\xa3\xa6\0\xe2\xa3\xb6\0\xe2\xa3\xbe\0"
+      /*40 [⡇]       41 [⣇]        42 [⣧]        43 [⣷]        44 [⣿]*/
+      "\xe2\xa1\x87\0\xe2\xa3\x87\0\xe2\xa3\xa7\0\xe2\xa3\xb7\0\xe2\xa3\xbf",
+   },
+#endif // HAVE_LIBNCURSESW
+
+#if 0
+   [GRAPHSTYLE_OLD] = {
+      /* Pre-2.0 style perserved here for enthusiasts and also as an example.
+       * Note that we avoid '*' and '~' because different fonts render these
+       * characters at different heights. */
+      .pixPerRow = 6,
+      .length = 1,
+      .reserved = "\0\0",
+      .str =
+         " _.-'`:"
+         "_,.-'`:"
+         "...-'`:"
+         "----'`:"
+         "'''''`:"
+         "``````:"
+         ":::::::",
+   },
+#endif // unused
 };
-
-#endif
-
-#define PIXPERROW_ASCII 2
-static const char* GraphMeterMode_dotsAscii[] = {
-   /*00*/" ", /*01*/".", /*02*/":",
-   /*10*/".", /*11*/".", /*12*/":",
-   /*20*/":", /*21*/":", /*22*/":"
-};
-
-static const char** GraphMeterMode_dots;
-static int GraphMeterMode_pixPerRow;
 
 static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
 
@@ -362,16 +411,16 @@ static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
     GraphData* data = (GraphData*) this->drawData;
    const int nValues = METER_BUFFER_LEN;
 
+   const GraphStyle *graphStyle;
 #ifdef HAVE_LIBNCURSESW
    if (CRT_utf8) {
-      GraphMeterMode_dots = GraphMeterMode_dotsUtf8;
-      GraphMeterMode_pixPerRow = PIXPERROW_UTF8;
+      graphStyle = &GraphMeterMode_styles[GRAPHSTYLE_ASCII];
    } else
 #endif
    {
-      GraphMeterMode_dots = GraphMeterMode_dotsAscii;
-      GraphMeterMode_pixPerRow = PIXPERROW_ASCII;
+      graphStyle = &GraphMeterMode_styles[GRAPHSTYLE_UTF8];
    }
+   int pixPerRow = (int) graphStyle->pixPerRow;
 
    attrset(CRT_colors[METER_TEXT]);
    int captionLen = 3;
@@ -405,17 +454,19 @@ static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
       i = 0;
    }
    for (; i < nValues; i+=2, k++) {
-      int pix = GraphMeterMode_pixPerRow * GRAPH_HEIGHT;
+      int pix = pixPerRow * GRAPH_HEIGHT;
       int v1 = CLAMP(data->values[i] * pix, 1, pix);
       int v2 = CLAMP(data->values[i+1] * pix, 1, pix);
 
       int colorIdx = GRAPH_1;
       for (int line = 0; line < GRAPH_HEIGHT; line++) {
-         int line1 = CLAMP(v1 - (GraphMeterMode_pixPerRow * (GRAPH_HEIGHT - 1 - line)), 0, GraphMeterMode_pixPerRow);
-         int line2 = CLAMP(v2 - (GraphMeterMode_pixPerRow * (GRAPH_HEIGHT - 1 - line)), 0, GraphMeterMode_pixPerRow);
+         int line1 = CLAMP(v1 - (pixPerRow * (GRAPH_HEIGHT - 1 - line)), 0, pixPerRow);
+         int line2 = CLAMP(v2 - (pixPerRow * (GRAPH_HEIGHT - 1 - line)), 0, pixPerRow);
 
          attrset(CRT_colors[colorIdx]);
-         mvaddstr(y+line, x+k, GraphMeterMode_dots[line1 * (GraphMeterMode_pixPerRow + 1) + line2]);
+         const char *str = &graphStyle->str[((int) graphStyle->length) *
+                           ((line1 * (pixPerRow + 1) + line2))];
+         mvaddnstr(y+line, x+k, str, (int) graphStyle->length);
          colorIdx = GRAPH_2;
       }
    }
