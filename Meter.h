@@ -13,7 +13,7 @@ in the source distribution for its full text.
 
 #define GRAPH_DELAY (DEFAULT_DELAY/2)
 
-#define GRAPH_HEIGHT 4 /* Unit: rows (lines) */
+#define GRAPH_HEIGHT 5 /* Unit: rows (lines) */
 
 #include "ListItem.h"
 
@@ -118,7 +118,7 @@ typedef struct GraphData_ {
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
 #endif
 
-#define IS_POWER_OF_TWO(x) ((x) > 0 && !((x) & ((x) - 1)))
+#define IS_POWER_OF_2(x) ((x) > 0 && !((x) & ((x) - 1)))
 
 #ifndef __has_builtin // Clang's macro
 # define __has_builtin(x) 0
@@ -126,6 +126,11 @@ typedef struct GraphData_ {
 #if (__has_builtin(__builtin_clz) || \
     ((__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
 # define HAS_BUILTIN_CLZ 1
+/*
+ * log2uint(x): base-2 logarithm of (unsigned int) x, rounded down.
+ * (log2uint(0U): undefined behavior)
+ */
+# define log2uint(x) (sizeof(unsigned int)*CHAR_BIT-1-__builtin_clz(x))
 #endif // __has_builtin(__builtin_clz) || GNU C 3.4 or later
 
 extern MeterClass Meter_class;

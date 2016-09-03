@@ -135,7 +135,7 @@ typedef struct GraphData_ {
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
 #endif
 
-#define IS_POWER_OF_TWO(x) ((x) > 0 && !((x) & ((x) - 1)))
+#define IS_POWER_OF_2(x) ((x) > 0 && !((x) & ((x) - 1)))
 
 #ifndef __has_builtin // Clang's macro
 # define __has_builtin(x) 0
@@ -143,6 +143,11 @@ typedef struct GraphData_ {
 #if (__has_builtin(__builtin_clz) || \
     ((__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
 # define HAS_BUILTIN_CLZ 1
+/*
+ * log2uint(x): base-2 logarithm of (unsigned int) x, rounded down.
+ * (log2uint(0U): undefined behavior)
+ */
+# define log2uint(x) (sizeof(unsigned int)*CHAR_BIT-1-__builtin_clz(x))
 #endif // __has_builtin(__builtin_clz) || GNU C 3.4 or later
 
 MeterClass Meter_class = {
@@ -329,20 +334,18 @@ static inline int GraphData_getColor(GraphData* this, int vIndex, int h, int sca
          return BAR_SHADOW;
       }
       unsigned int j, offset;
-#if IS_POWER_OF_TWO(GRAPH_HEIGHT)
+   #if IS_POWER_OF_2(GRAPH_HEIGHT)
       j = 1 << level;
       offset = (h << (level + 1)) + j;
       assert(offset < this->colorRowSize);
       return this->colors[vIndex * this->colorRowSize + offset];
-#elif 0
-// #if HAS_BUILTIN_CLZ
-      // Value is incorrect. Buggy. Disable for now.
-      j = 1 << ((sizeof(int) * CHAR_BIT) - 1 -
-          __builtin_clz(this->colorRowSize - 1 - (h << (level + 1))));
-      assert(j > 0);
+   #elif HAS_BUILTIN_CLZ
+      // (1 << log2uint(x)) == (greatest power of two that is <= x)
+      j = 1 << MIN(level, log2uint(this->colorRowSize - 1 - (h << (level + 1))));
       offset = (h << (level + 1)) + j;
+      assert(offset < this->colorRowSize);
       return this->colors[vIndex * this->colorRowSize + offset];
-#else
+   #else
       for (j = 1 << level; ; j >>= 1) {
          assert(j > 0);
          offset = (h << (level + 1)) + j;
@@ -350,7 +353,7 @@ static inline int GraphData_getColor(GraphData* this, int vIndex, int h, int sca
             return this->colors[vIndex * this->colorRowSize + offset];
          }
       }
-#endif
+   #endif // !(IS_POWER_OF_2(GRAPH_HEIGHT) || HAS_BUILTIN_CLZ)
    } else if (this->colorRowSize == GRAPH_HEIGHT) {
       return this->colors[vIndex * this->colorRowSize + h];
    } else {
