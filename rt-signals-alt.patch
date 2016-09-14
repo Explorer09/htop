@@ -1,0 +1,38 @@
+diff --git a/SignalsPanel.c b/SignalsPanel.c
+index 22fefa6..46b6957 100644
+--- a/SignalsPanel.c
++++ b/SignalsPanel.c
+@@ -44,19 +44,24 @@ Panel* SignalsPanel_new() {
+    // SIGRTMIN and SIGRTMAX expand to libc internal functions and we have to
+    // grab their numbers at runtime.
+    static char buf[15]; // 15 == sizeof("xx SIGRTMIN+nn")
+-   int rtmax;
+-   for (int sig = SIGRTMIN; sig <= (rtmax = SIGRTMAX); i++, sig++) {
+-      // Every signal between SIGRTMIN and SIGRTMAX are denoted in "SIGRTMIN+n"
+-      // notation. This matches glibc's strsignal(3) behavior.
+-      // We deviate from behaviors of Bash, ksh and Solaris intentionally.
+-      if (sig == rtmax) {
+-         snprintf(buf, 15, "%2d SIGRTMAX", sig);
+-      } else {
+-         int n = sig - SIGRTMIN;
++   for (int sig = SIGRTMIN; sig <= SIGRTMAX; i++, sig++) {
++      // ksh, Solaris and Bash's behavior: Signals between SIGRTMIN and
++      // SIGRTMAX are denoted in "SIGRTMIN+n" if (n>(SIGRTMAX-SIGRTMIN)/2),
++      // otherwise, "SIGRTMIN+m".
++      // Note that Bash's builtin "kill" is quite strict about accepted signal
++      // names. It does not accept "SIGRTMIN+0" nor "SIGRTMIN+n" where
++      // (n>(SIGRTMAX-SIGRTMIN)/2). They are accepted in ksh.
++      int n, m;
++      if ((n = sig - SIGRTMIN) <= (m = SIGRTMAX - sig)) {
+          snprintf(buf, 15, "%2d SIGRTMIN%+d", sig, n);
+          if (n == 0) {
+             buf[11] = '\0';
+          }
++      } else {
++         snprintf(buf, 15, "%2d SIGRTMAX%d", sig, -m);
++         if (m == 0) {
++            buf[11] = '\0';
++         }
+       }
+       Panel_set(this, i, (Object*) ListItem_new(buf, sig));
+    }
