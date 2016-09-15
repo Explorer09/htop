@@ -159,7 +159,7 @@ typedef struct ProcessClass_ {
 #define ONE_DECIMAL_M (ONE_DECIMAL_K * ONE_DECIMAL_K)
 #define ONE_DECIMAL_G (ONE_DECIMAL_M * ONE_DECIMAL_K)
 
-extern char Process_pidFormat[20];
+extern char Process_pidFormat[7];
 
 void Process_setupColumnWidths();
 

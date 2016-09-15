@@ -182,21 +182,23 @@ static int Process_getuid = -1;
 #define ONE_DECIMAL_M (ONE_DECIMAL_K * ONE_DECIMAL_K)
 #define ONE_DECIMAL_G (ONE_DECIMAL_M * ONE_DECIMAL_K)
 
-char Process_pidFormat[20] = "%7d ";
+char Process_pidFormat[7] = "%7d "; // 7 == sizeof("%10ld ")
 
-static char Process_titleBuffer[20][20];
+static char Process_titleBuffer[20][sizeof(pid_t) > 4 ? 20 : 10];
 
 void Process_setupColumnWidths() {
    int maxPid = Platform_getMaxPid();
    if (maxPid == -1) return;
-   int digits = ceil(log10(maxPid));
-   assert(digits < 20);
+   int digits = (int)ceil(log10(maxPid));
+   assert(digits < sizeof(Process_titleBuffer[0]));
    for (int i = 0; Process_pidColumns[i].label; i++) {
       assert(i < 20);
-      snprintf(Process_titleBuffer[i], 20, "%*s ", digits, Process_pidColumns[i].label);
+      snprintf(Process_titleBuffer[i], sizeof(Process_titleBuffer[0]),
+               "%*s ", digits, Process_pidColumns[i].label);
       Process_fields[Process_pidColumns[i].id].title = Process_titleBuffer[i];
    }
-   sprintf(Process_pidFormat, "%%%dd ", digits);
+   snprintf(Process_pidFormat, sizeof(Process_pidFormat),
+            sizeof(pid_t) > sizeof(int) ? "%%%dld " : "%%%dd ", digits);
 }
 
 void Process_humanNumber(RichString* str, unsigned long number, bool coloring) {
