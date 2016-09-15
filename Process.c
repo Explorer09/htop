@@ -159,7 +159,6 @@ void Process_delete(Object* cast);
 bool Process_isThread(Process* this);
 extern ProcessFieldData Process_fields[];
 extern ProcessPidColumn Process_pidColumns[];
-extern char Process_pidFormat[20];
 
 typedef Process*(*Process_New)(struct Settings_*);
 typedef void (*Process_WriteField)(Process*, RichString*, ProcessField);
