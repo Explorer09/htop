@@ -153,6 +153,13 @@ ListItem* Meter_toListItem(const Meter* this, bool moving) {
    return li;
 }
 
+/* ---------- GraphData ---------- */
+
+static GraphData* GraphData_new(void) {
+   GraphData* data = xCalloc(1, sizeof(GraphData));
+   return data;
+}
+
 /* ---------- TextMeterMode ---------- */
 
 static void TextMeterMode_draw(Meter* this, int x, int y, int w) {
@@ -291,7 +298,7 @@ static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
    const ProcessList* pl = this->pl;
 
    if (!this->drawData) {
-      this->drawData = xCalloc(1, sizeof(GraphData));
+      this->drawData = (void*) GraphData_new();
    }
    GraphData* data = this->drawData;
    const int nValues = METER_GRAPHDATA_SIZE;
